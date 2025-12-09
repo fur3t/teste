@@ -1,0 +1,933 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Match & Renasce</title>
+    <style>
+        /* --- General Reset & Layout --- */
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            /* Layer 0: Sunset Gradient Background */
+            background: linear-gradient(to bottom, #ff9a44, #fc6076, #b967ff, #4e54c8);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            overflow: hidden;
+            color: #333;
+            position: relative;
+        }
+
+        /* --- Layer 1: The Palm Tree Overlay --- */
+        .palm-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none; /* Let clicks pass through */
+            z-index: 1; /* Above background, below content */
+            
+            /* Image Settings */
+            background-image: url('https://img.freepik.com/free-psd/silhouettes-palm-tree-illustration_23-2151074546.jpg?semt=ais_hybrid&w=740&q=80');
+            background-size: cover;
+            background-position: center bottom;
+            background-repeat: no-repeat;
+
+            /* This makes the white pixels transparent, keeping only black */
+            mix-blend-mode: multiply;
+            opacity: 0.9; 
+        }
+
+        h1 {
+            margin: 20px 0 10px 0;
+            color: white; 
+            font-weight: 700;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+            z-index: 20;
+            font-size: 2.5rem;
+        }
+
+        /* --- Main Content Area --- */
+        .app-container {
+            flex-grow: 1;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            z-index: 20; 
+        }
+
+        /* --- Card Container --- */
+        .card-container {
+            position: relative;
+            width: 90%;
+            max-width: 350px;
+            height: 500px;
+            margin-bottom: 20px;
+        }
+
+        /* --- The Card --- */
+        .card {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+            overflow: hidden;
+            cursor: grab;
+            transition: transform 0.3s ease;
+            user-select: none;
+            display: flex;
+            flex-direction: column;
+        }
+        .card:active { cursor: grabbing; }
+
+        .card-image {
+            width: 100%;
+            height: 75%;
+            object-fit: cover;
+            pointer-events: none;
+        }
+
+        .card-content {
+            padding: 15px 20px;
+            height: 25%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            background: white;
+            position: relative;
+        }
+
+        /* Info Icon Overlay */
+        .info-btn {
+            position: absolute;
+            right: 20px;
+            top: -25px;
+            width: 40px;
+            height: 40px;
+            background: white;
+            border-radius: 50%;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: #3498db;
+            font-size: 1.2rem;
+            cursor: pointer;
+            border: 2px solid #f0f0f0;
+            z-index: 30;
+            pointer-events: auto;
+        }
+        .info-btn:hover { background: #f9f9f9; transform: scale(1.05); }
+
+        .card h2 { font-size: 1.5rem; margin-bottom: 5px; color: #222; pointer-events: none; }
+        .card p { color: #666; font-size: 0.9rem; pointer-events: none; }
+
+        /* --- Overlays (Like/Nope badges) --- */
+        .overlay {
+            position: absolute;
+            top: 40px;
+            padding: 10px 20px;
+            border: 4px solid;
+            border-radius: 8px;
+            font-size: 2rem;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            opacity: 0;
+            transform: rotate(-15deg);
+            z-index: 10;
+            pointer-events: none;
+        }
+        .overlay.nope {
+            right: 40px;
+            color: #e74c3c;
+            border-color: #e74c3c;
+            transform: rotate(15deg);
+        }
+        .overlay.like {
+            left: 40px;
+            color: #2ecc71;
+            border-color: #2ecc71;
+            transform: rotate(-15deg);
+        }
+
+        /* --- Controls (Swipe Buttons) --- */
+        .controls {
+            display: flex;
+            gap: 25px;
+            margin-bottom: 20px;
+            z-index: 20;
+        }
+        .btn {
+            width: 65px;
+            height: 65px;
+            border-radius: 50%;
+            border: none;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            cursor: pointer;
+            font-size: 1.8rem;
+            transition: transform 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+        }
+        .btn:hover { transform: scale(1.1); }
+
+        .btn-nope { background: #e74c3c; }
+        .btn-like { background: #2ecc71; }
+
+        /* --- Empty State --- */
+        .no-more-cards {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            z-index: -1;
+            width: 100%;
+            color: white; 
+            text-shadow: 1px 1px 3px rgba(0,0,0,0.5);
+        }
+        .reset-btn {
+            margin-top: 15px; padding: 10px 20px; cursor: pointer;
+            background: white; color: #333; border: none; border-radius: 20px;
+            font-weight: bold; box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+            z-index: 25;
+            position: relative; 
+        }
+        .reset-btn:active { transform: scale(0.95); }
+
+        /* --- Confetti Animation --- */
+        .confetti {
+            position: fixed;
+            font-size: 2rem;
+            z-index: 9999;
+            pointer-events: none;
+            animation: fall 1.5s ease-out forwards;
+        }
+        @keyframes fall {
+            0% { transform: translateY(0) rotate(0deg) scale(0.5); opacity: 1; }
+            100% { transform: translateY(100px) rotate(360deg) scale(1.5); opacity: 0; }
+        }
+
+        /* --- Popup Modal (General) --- */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.85); /* Darker for start/end screens */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+            z-index: 3000;
+            color: #333;
+        }
+        .modal.active { opacity: 1; pointer-events: all; }
+        .modal-content {
+            background: white;
+            width: 85%;
+            max-width: 500px;
+            padding: 30px;
+            border-radius: 15px;
+            position: relative;
+            transform: translateY(20px);
+            transition: transform 0.3s ease;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        .modal.active .modal-content { transform: translateY(0); }
+        .close-btn {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: #eee;
+            border: none;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-weight: bold;
+            color: #555;
+        }
+
+        /* --- Start Profile Modal Styling --- */
+        .profile-form { display: flex; flex-direction: column; gap: 15px; }
+        .profile-form label { font-weight: bold; font-size: 0.9rem; margin-bottom: -10px; }
+        .profile-form input, .profile-form textarea {
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-family: inherit;
+        }
+        .start-btn {
+            background: #4e54c8;
+            color: white;
+            padding: 15px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        .start-btn:hover { background: #3f44a5; }
+
+        /* --- Results Modal Styling --- */
+        .profile-summary {
+            text-align: center;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 20px;
+            margin-bottom: 20px;
+        }
+        .profile-summary h2 { color: #4e54c8; font-size: 2rem; margin-bottom: 5px; }
+        .profile-summary .age { font-size: 1.1rem; color: #666; font-weight: bold; }
+        .profile-summary .desc { margin-top: 10px; font-style: italic; color: #555; }
+        
+        .matches-section h3 { margin-bottom: 15px; color: #333; }
+        .matches-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+            gap: 15px;
+        }
+        .match-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .match-item img {
+            width: 100px;
+            height: 100px;
+            object-fit: cover;
+            border-radius: 50%;
+            border: 3px solid #2ecc71;
+            margin-bottom: 5px;
+        }
+        .match-item span {
+            font-size: 0.85rem;
+            text-align: center;
+            font-weight: 600;
+        }
+
+        /* --- Admin Panel --- */
+        .admin-trigger {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: #87CEEB;
+            color: white; 
+            border: none;
+            cursor: pointer;
+            font-size: 1.8rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            z-index: 2001;
+            transition: transform 0.2s, background 0.2s;
+        }
+        .admin-trigger:hover { transform: scale(1.1); background: #76bfe0; }
+
+        .admin-panel {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 65vh;
+            background: white;
+            box-shadow: 0 -5px 20px rgba(0,0,0,0.2);
+            border-radius: 25px 25px 0 0;
+            transform: translateY(100%);
+            transition: transform 0.3s ease-in-out;
+            z-index: 2000;
+            display: flex;
+            flex-direction: column;
+            color: #333;
+        }
+        .admin-panel.open { transform: translateY(0); }
+
+        .admin-header {
+            padding: 20px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-radius: 25px 25px 0 0;
+        }
+        .admin-body { padding: 20px; overflow-y: auto; flex-grow: 1; }
+        
+        .monument-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            border-bottom: 1px solid #eee;
+            background: #fff;
+        }
+        .monument-actions button {
+            margin-left: 5px;
+            padding: 6px 12px;
+            cursor: pointer;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            background: white;
+            font-size: 0.9rem;
+        }
+        .btn-delete { color: red; border-color: #ffcccc; }
+        .btn-edit { color: #3498db; border-color: #cce5ff; }
+
+        .admin-form {
+            display: none;
+            flex-direction: column;
+            gap: 12px;
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 2px dashed #eee;
+            background: #fcfcfc;
+            padding: 15px;
+            border-radius: 8px;
+        }
+        .admin-form input, .admin-form textarea {
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            width: 100%;
+            font-family: inherit;
+            background: white;
+        }
+        .form-buttons { display: flex; gap: 10px; }
+        .form-buttons button {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .save-btn { background: #2ecc71; color: white; }
+        .cancel-edit { background: #e74c3c; color: white; }
+        .add-btn {
+            width: 100%;
+            padding: 12px;
+            margin-top: 15px;
+            background: #3498db;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 1rem;
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="palm-overlay"></div>
+
+    <h1>Match & Renasce</h1>
+
+    <div class="app-container">
+        <div class="card-container" id="cardContainer">
+            <div class="no-more-cards">
+                <h2>Não há mais obras!</h2>
+            </div>
+        </div>
+
+        <div class="controls">
+            <button class="btn btn-nope" onclick="triggerSwipe('left')">✕</button>
+            <button class="btn btn-like" onclick="triggerSwipe('right')">♥</button>
+        </div>
+    </div>
+
+    <div class="modal active" id="startModal">
+        <div class="modal-content">
+            <h2 style="text-align:center; margin-bottom:20px; color:#4e54c8;">Criar perfil</h2>
+            <div class="profile-form">
+                <label>Nome</label>
+                <input type="text" id="profUser" placeholder="Nome...">
+                
+                <label>Idade</label>
+                <input type="number" id="profAge" placeholder="Idade...">
+                
+                <label>Descrição</label>
+                <textarea id="profDesc" rows="3" placeholder="Descrição..."></textarea>
+                
+                <button class="start-btn" onclick="saveProfile()">Criar e jogar!</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="resultsModal">
+        <div class="modal-content">
+            <div class="profile-summary">
+                <h2 id="resUser">Nome</h2>
+                <div class="age" id="resAge">Idade: 25</div>
+                <div class="desc" id="resDesc">Descrição...</div>
+            </div>
+            
+            <div class="matches-section">
+                <h3>As obras de que gostaste:</h3>
+                <div class="matches-grid" id="matchesGrid">
+                    </div>
+                <div id="noMatchesMsg" style="display:none; color:#777; font-style:italic;">Não gostaste de nenhum!</div>
+            </div>
+            
+            <button class="reset-btn" onclick="resetStack()" style="width:100%; margin-top:20px;">Jogar outra vez</button>
+        </div>
+    </div>
+
+    <div class="modal" id="factModal">
+        <div class="modal-content">
+            <button class="close-btn" onclick="closeModal()">✕</button>
+            <h2 class="modal-title" id="modalTitle">Nome da Obras</h2>
+            <img id="modalImg" src="" style="width:100%; height:200px; object-fit:cover; border-radius:10px; margin-bottom:10px;">
+            <p id="modalLoc" style="color:#666; margin-bottom:15px; font-style:italic;"></p>
+            <h3>Descrição:</h3>
+            <ul class="fact-list" id="modalFacts"></ul>
+        </div>
+    </div>
+
+    <script>
+        // --- Data ---
+        let monuments = [
+            {
+                name: "Tartarugas Ninja",
+                location: "Curiosidade extra",
+                image: "https://cdn.discordapp.com/attachments/1179470882662527056/1448037612395823277/tmnt-cartoon.png?ex=6939cd9e&is=69387c1e&hm=2bf6d67528de08da46779ab1cb9e952db5eaa83330a4d4abd0a23db757a823b6&",
+                facts: ["Os criadores das Tartarugas Ninja deram-lhes os nomes Leonardo, Donatello, Michelangelo e Raphael precisamente em homenagem a estes mestres do Renascimento.",
+                "  A ideia era combinar a estética radical e divertida dos heróis com a herança cultural e artística de alguns dos maiores génios da História."]
+            },
+            {
+                name: "A Escola de Atenas (Raphael)",
+                location: "Museus do Vaticano, Cidade do Vaticano",
+                image: "https://upload.wikimedia.org/wikipedia/commons/c/c4/Escola_de_Atenas_-_Vaticano_2.jpg",
+                facts: ["Fresco que reúne figuras como Platão e Aristóteles num grandioso cenário arquitectónico.",
+                " É um exemplo perfeito de harmonia, equilíbrio e perspectiva renascentista, celebrando o pensamento racional e o legado intelectual da Antiguidade."]
+            },
+            {
+                name: "Teto da Capela Sistina (Michelangelo)",
+                location: "Museus do Vaticano, Cidade do Vaticano",
+                image: "https://upload.wikimedia.org/wikipedia/commons/4/46/Sistine_chapel.jpg",
+                facts: ["Conjunto de frescos monumentais que cobre o tecto da capela no Vaticano.",
+                " Inclui cenas do Génesis, como a famosa Criação de Adão, e demonstra um domínio extraordinário da anatomia humana, do movimento e do dramatismo visual."]
+            },
+            {
+                name: "David em bronze (Donatello)",
+                location: "Museo Nazionale del Bargello, Florença",
+                image: "https://mr-expert.com/wp-content/uploads/2018/11/ie002393596_pht.jpg",
+                facts: ["Primeira escultura de grande dimensão totalmente em bronze no Renascimento",
+                " Representa David após derrotar Golias, com um corpo jovem e naturalista.",
+                " A expressão serena e a postura relaxada mostram a nova atenção do período à individualidade e ao realismo."]
+            },
+            {
+                name: "Mona Lisa (Leonardo da Vinci)",
+                location: "Musée du Louvre, Paris",
+                image: "https://upload.wikimedia.org/wikipedia/commons/thumb/e/ec/Mona_Lisa%2C_by_Leonardo_da_Vinci%2C_from_C2RMF_retouched.jpg/330px-Mona_Lisa%2C_by_Leonardo_da_Vinci%2C_from_C2RMF_retouched.jpg",
+                facts: ["Retrato célebre conhecido pelo sorriso enigmático e pela subtil transição de sombras criada pela técnica do sfumato.",
+                " A composição equilibrada e o olhar que parece seguir o observador tornaram-na uma das pinturas mais icónicas do mundo."]
+            },
+            {
+                name: "Jardim da Manga",
+                location: "R. Olímpio Nicolau Rui Fernandes, Coimbra",
+                image: "https://chavesandaround.wordpress.com/wp-content/uploads/2020/03/jardim-da-manga_coimbra-1.jpg",
+                facts: ["O monumento, concebido por João de Ruão e mandado construir por D. João III em 1533, fazia parte do Mosteiro de Santa Cruz.",
+                " Conta-se que a sua criação nasceu de um desenho improvisado pelo rei, ao notar um espaço vazio no mosteiro.",
+                " Planeado com grande cuidado e carregado de simbolismo, reflete as ideias do prior Frei Brás de Barros, que quis representar os princípios da fé cristã através da arquitetura, evocando a Fonte da Vida e os quatro rios do Paraíso.",
+                " Atualmente, apenas a cúpula, a fonte central, quatro pequenas capelas e lagos retangulares subsistem do antigo Claustro da Manga."]
+            },
+            {
+                name: "Paineis de São Vincente",
+                location: "Museu Nacional de Arte Antiga, Lisboa",
+                image: "https://www.regiaodeleiria.pt/wp-content/uploads/2020/12/retabulo1.jpg",
+                facts: ["Os seis painéis atribuídos a Nuno Gonçalves mostram 58 figuras reunidas à volta de duas representações de São Vicente, formando uma grande cena cerimonial com membros da Corte e de vários grupos sociais.",
+                " As personagens destacam-se pelas expressões intensas e pelos trajes cuidadosamente pintados, unindo narrativa e contemplação.",
+                " Embora o significado total da obra ainda não seja totalmente claro, acredita-se que foi criada pelo pintor régio de D. Afonso V e que originalmente fazia parte do retábulo de São Vicente da Sé de Lisboa."]
+            },
+            {
+                name: "Sé Velha",
+                location: "Largo da Sé Velha, Coimbra",
+                image: "https://www.uc.pt/site/assets/files/698684/img_4896.1250x0.webp",
+                facts: ["A Sé Velha de Coimbra, iniciada em 1164 por ordem do bispo D. Miguel Salomão e consagrada em 1184, é a única catedral românica portuguesa da época da Reconquista que chegou quase intacta até hoje.",
+                " O seu projeto é atribuído ao mestre Roberto, com direção de obras por mestres Bernardo e Soeiro, e introduz uma nova tipologia arquitetónica conhecida como “catedrais do Sul”.",
+                " O claustro, começado em 1218, é uma das primeiras estruturas góticas construídas em Portugal.",
+                " No século XVI foram acrescentados elementos renascentistas, incluindo a Porta Especiosa, de João de Ruão e Nicolau de Chanterenne.",
+                " No interior destacam-se a Capela do Santíssimo Sacramento, a Capela de São Pedro e o retábulo gótico flamejante da capela-mor.",
+                " Os capitéis românicos, decorados com motivos vegetalistas e animalistas, constituem um dos mais importantes conjuntos escultóricos do país.",
+                " Nas naves laterais conservam-se vários túmulos góticos, entre os quais o de D. Vataça Lascaris, dama bizantina que chegou a Portugal no século XIV."]
+            }
+        ];
+
+        let activeStack = [...monuments];
+        let likedMonuments = []; // Stores the objects of monuments swiped RIGHT
+        let userProfile = { name: "", age: "", desc: "" };
+
+        const container = document.getElementById('cardContainer');
+        const resetStackBtn = document.getElementById('resetStackBtn');
+
+        resetStackBtn.addEventListener('click', resetStack);
+        
+        // --- Profile Logic ---
+        function saveProfile() {
+            const name = document.getElementById('profUser').value.trim();
+            const age = document.getElementById('profAge').value.trim();
+            const desc = document.getElementById('profDesc').value.trim();
+
+            if(!name || !age || !desc) {
+                alert("Por favor preenche o teu perfil!");
+                return;
+            }
+
+            userProfile = { name, age, desc };
+            
+            // Hide Start Modal
+            document.getElementById('startModal').classList.remove('active');
+            
+            // Initialize game
+            initCards();
+        }
+
+        // --- End Game Logic ---
+        function checkEndGame() {
+            // If no cards are left in the DOM
+            const cardsLeft = document.querySelectorAll('.card');
+            if(cardsLeft.length === 0) {
+                setTimeout(showResults, 500);
+            }
+        }
+
+        function showResults() {
+            // Populate Profile Info
+            document.getElementById('resUser').textContent = userProfile.name;
+            document.getElementById('resAge').textContent = "Age: " + userProfile.age;
+            document.getElementById('resDesc').textContent = userProfile.desc;
+
+            // Populate Matches
+            const grid = document.getElementById('matchesGrid');
+            grid.innerHTML = "";
+            
+            if(likedMonuments.length === 0) {
+                document.getElementById('noMatchesMsg').style.display = 'block';
+            } else {
+                document.getElementById('noMatchesMsg').style.display = 'none';
+                likedMonuments.forEach(mon => {
+                    const div = document.createElement('div');
+                    div.className = 'match-item';
+                    div.innerHTML = `
+                        <img src="${mon.image}" alt="${mon.name}">
+                        <span>${mon.name}</span>
+                    `;
+                    grid.appendChild(div);
+                });
+            }
+
+            document.getElementById('resultsModal').classList.add('active');
+        }
+
+        // --- Confetti / Emojis Logic ---
+        function triggerConfetti(type) {
+            const emojis = type === 'like' 
+                ? ['🎨', '🏛️', '🖼️', '🎻', '🖌️', '✨'] 
+                : ['💔', '😢', '🥀', '👎', '🌧️', '🌑']; 
+            
+            const count = 30; 
+            
+            for (let i = 0; i < count; i++) {
+                createParticle(emojis[Math.floor(Math.random() * emojis.length)]);
+            }
+        }
+
+        function createParticle(char) {
+            const particle = document.createElement('div');
+            particle.classList.add('confetti');
+            particle.innerText = char;
+            const x = window.innerWidth / 2 + (Math.random() - 0.5) * 100;
+            const y = window.innerHeight / 2 + (Math.random() - 0.5) * 100;
+            const destX = (Math.random() - 0.5) * 600;
+            const destY = (Math.random() - 0.5) * 600;
+
+            particle.style.left = x + 'px';
+            particle.style.top = y + 'px';
+            particle.style.setProperty('--destX', destX + 'px');
+            particle.style.setProperty('--destY', destY + 'px');
+            
+            particle.animate([
+                { transform: `translate(0, 0) scale(0.5)`, opacity: 1 },
+                { transform: `translate(${destX}px, ${destY}px) scale(1.5) rotate(${Math.random()*360}deg)`, opacity: 0 }
+            ], {
+                duration: 1000 + Math.random() * 500,
+                easing: 'cubic-bezier(0.25, 1, 0.5, 1)',
+                fill: 'forwards'
+            });
+
+            document.body.appendChild(particle);
+            setTimeout(() => { particle.remove(); }, 1500);
+        }
+
+        // --- Card Initialization ---
+        function initCards() {
+            const existingCards = document.querySelectorAll('.card');
+            existingCards.forEach(e => e.remove());
+
+            activeStack.forEach((monument, index) => {
+                const card = document.createElement('div');
+                card.classList.add('card');
+                card.style.zIndex = index; 
+                // Store index to retrieve data later
+                card.dataset.index = index;
+
+                const infoBtn = document.createElement('div');
+                infoBtn.classList.add('info-btn');
+                infoBtn.innerHTML = 'i';
+                infoBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    showDetails(monument);
+                };
+
+                card.innerHTML = `
+                    <img src="${monument.image}" alt="${monument.name}" class="card-image">
+                    <div class="overlay like">LIKE</div>
+                    <div class="overlay nope">NOPE</div>
+                    <div class="card-content">
+                        <h2>${monument.name}</h2>
+                        <p>${monument.location}</p>
+                    </div>
+                `;
+                
+                card.querySelector('.card-content').appendChild(infoBtn);
+                addDragFunctionality(card, monument);
+                container.appendChild(card);
+            });
+        }
+
+        // --- Drag Logic ---
+        function addDragFunctionality(card, monumentData) {
+            let isDragging = false;
+            let startX = 0;
+            let currentX = 0;
+
+            const onStart = (e) => {
+                if(e.target.classList.contains('info-btn')) return;
+                isDragging = true;
+                startX = e.type.includes('mouse') ? e.clientX : e.touches[0].clientX;
+                card.style.transition = 'none';
+            };
+
+            const onMove = (e) => {
+                if (!isDragging) return;
+                e.preventDefault();
+                currentX = (e.type.includes('mouse') ? e.clientX : e.touches[0].clientX) - startX;
+                
+                const rotate = currentX * 0.1; 
+                card.style.transform = `translateX(${currentX}px) rotate(${rotate}deg)`;
+
+                const likeOverlay = card.querySelector('.overlay.like');
+                const nopeOverlay = card.querySelector('.overlay.nope');
+
+                if (currentX > 0) {
+                    likeOverlay.style.opacity = Math.min(currentX / 100, 1);
+                    nopeOverlay.style.opacity = 0;
+                } else {
+                    nopeOverlay.style.opacity = Math.min(Math.abs(currentX) / 100, 1);
+                    likeOverlay.style.opacity = 0;
+                }
+            };
+
+            const onEnd = () => {
+                if (!isDragging) return;
+                isDragging = false;
+                card.style.transition = 'transform 0.3s ease';
+
+                if (currentX > 100) swipeCard(card, 'right', monumentData);
+                else if (currentX < -100) swipeCard(card, 'left', monumentData);
+                else {
+                    card.style.transform = 'translateX(0) rotate(0)';
+                    card.querySelector('.overlay.like').style.opacity = 0;
+                    card.querySelector('.overlay.nope').style.opacity = 0;
+                }
+                currentX = 0;
+            };
+
+            card.addEventListener('mousedown', onStart);
+            document.addEventListener('mousemove', onMove);
+            document.addEventListener('mouseup', onEnd);
+            card.addEventListener('touchstart', onStart);
+            document.addEventListener('touchmove', onMove);
+            document.addEventListener('touchend', onEnd);
+        }
+
+        function swipeCard(card, direction, monumentData) {
+            const moveX = direction === 'right' ? 1000 : -1000;
+            const rotate = direction === 'right' ? 30 : -30;
+            card.style.transform = `translateX(${moveX}px) rotate(${rotate}deg)`;
+
+            triggerConfetti(direction === 'right' ? 'like' : 'nope');
+
+            // Track Likes
+            if(direction === 'right') {
+                likedMonuments.push(monumentData);
+            }
+
+            // Remove card and check if stack is empty
+            setTimeout(() => { 
+                card.remove(); 
+                checkEndGame();
+            }, 300);
+        }
+
+        function triggerSwipe(direction) {
+            const cards = document.querySelectorAll('.card');
+            if (cards.length === 0) return;
+            const topCard = cards[cards.length - 1]; 
+            
+            // Get data from activeStack based on index stored in dataset
+            const idx = topCard.dataset.index;
+            const monumentData = activeStack[idx];
+            
+            swipeCard(topCard, direction, monumentData);
+        }
+
+        // --- RESET LOGIC ---
+        function resetStack() {
+            activeStack = JSON.parse(JSON.stringify(monuments));
+            likedMonuments = []; // Clear likes
+            document.getElementById('resultsModal').classList.remove('active'); // Hide results
+            initCards();
+        }
+
+        // --- Details Modal ---
+        function showDetails(data) {
+            document.getElementById('modalTitle').innerText = data.name;
+            document.getElementById('modalLoc').innerText = data.location;
+            document.getElementById('modalImg').src = data.image;
+            
+            const list = document.getElementById('modalFacts');
+            list.innerHTML = '';
+            data.facts.forEach(fact => {
+                const li = document.createElement('li');
+                li.innerText = fact;
+                list.appendChild(li);
+            });
+            document.getElementById('factModal').classList.add('active');
+        }
+
+        function closeModal() {
+            document.getElementById('factModal').classList.remove('active');
+        }
+
+        // --- Admin Panel Logic ---
+        function toggleAdmin() {
+            document.getElementById('adminPanel').classList.toggle('open');
+            renderAdminList();
+            hideForm();
+        }
+
+        function renderAdminList() {
+            const list = document.getElementById('monumentList');
+            list.innerHTML = '';
+            monuments.forEach((m, i) => {
+                const div = document.createElement('div');
+                div.className = 'monument-item';
+                div.innerHTML = `
+                    <span>${m.name}</span>
+                    <div class="monument-actions">
+                        <button class="btn-edit" onclick="editMonument(${i})">Editar</button>
+                        <button class="btn-delete" onclick="deleteMonument(${i})">Apagar</button>
+                    </div>
+                `;
+                list.appendChild(div);
+            });
+        }
+
+        function deleteMonument(index) {
+            if(confirm('Delete ' + monuments[index].name + '?')) {
+                monuments.splice(index, 1);
+                renderAdminList();
+                resetStack();
+            }
+        }
+
+        function showAddForm() {
+            document.getElementById('adminForm').style.display = 'flex';
+            document.getElementById('formTitle').innerText = 'Add New Item';
+            document.getElementById('editIndex').value = '-1';
+            clearForm();
+            document.querySelector('.admin-body').scrollTo(0, document.querySelector('.admin-body').scrollHeight);
+        }
+
+        function editMonument(index) {
+            const m = monuments[index];
+            document.getElementById('adminForm').style.display = 'flex';
+            document.getElementById('formTitle').innerText = 'Edit Item';
+            document.getElementById('editIndex').value = index;
+            
+            document.getElementById('inputName').value = m.name;
+            document.getElementById('inputLoc').value = m.location;
+            document.getElementById('inputImg').value = m.image;
+            document.getElementById('inputFacts').value = m.facts.join('\n');
+             document.querySelector('.admin-body').scrollTo(0, document.querySelector('.admin-body').scrollHeight);
+        }
+
+        function hideForm() {
+            document.getElementById('adminForm').style.display = 'none';
+        }
+
+        function clearForm() {
+            document.getElementById('inputName').value = '';
+            document.getElementById('inputLoc').value = '';
+            document.getElementById('inputImg').value = '';
+            document.getElementById('inputFacts').value = '';
+        }
+
+        function saveMonument() {
+            const index = parseInt(document.getElementById('editIndex').value);
+            const name = document.getElementById('inputName').value;
+            const loc = document.getElementById('inputLoc').value;
+            const img = document.getElementById('inputImg').value;
+            const factsRaw = document.getElementById('inputFacts').value;
+            
+            if(!name || !img) { alert('Name and Image URL are required'); return; }
+
+            const facts = factsRaw.split('\n').filter(f => f.trim() !== '');
+            const newObj = { name, location: loc, image: img, facts };
+
+            if (index === -1) {
+                monuments.push(newObj);
+            } else {
+                monuments[index] = newObj;
+            }
+
+            hideForm();
+            renderAdminList();
+            resetStack();
+        }
+
+        // Don't initCards here immediately. 
+        // Wait for profile creation.
+        // But active stack must be ready.
+        // initCards() is called inside saveProfile();
+
+    </script>
+</body>
+</html>
